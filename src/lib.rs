@@ -1,3 +1,3 @@
 mod document;
 
-pub use document::Document;
+pub use document::{Document, HeadingLevel};

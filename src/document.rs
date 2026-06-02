@@ -1,3 +1,15 @@
+/// The level of a Markdown heading, from `H1` (largest) to `H6` (smallest).
+///
+/// Used with [`Document::heading`] to specify how prominent a heading should be.
+///
+/// # Examples
+///
+/// ```
+/// use mdgen::HeadingLevel;
+///
+/// let level = HeadingLevel::H1;
+/// assert_eq!(level.marker(), "#");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeadingLevel {
     H1,
@@ -9,6 +21,15 @@ pub enum HeadingLevel {
 }
 
 impl HeadingLevel {
+    /// Returns the Markdown prefix string for this heading level.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::HeadingLevel;
+    ///
+    /// assert_eq!(HeadingLevel::H3.marker(), "###");
+    /// ```
     pub fn marker(self) -> &'static str {
         match self {
             HeadingLevel::H1 => "#",
@@ -30,6 +51,23 @@ enum Block {
     BulletList { items: Vec<String> },
 }
 
+/// A Markdown document that can be built incrementally and rendered to a string.
+///
+/// `Document` uses a builder pattern — each method takes ownership of the document,
+/// adds a block, and returns the document so calls can be chained.
+///
+/// # Examples
+///
+/// ```
+/// use mdgen::{Document, HeadingLevel};
+///
+/// let output = Document::new()
+///     .heading(HeadingLevel::H1, "My Document")
+///     .paragraph("This is an introduction.")
+///     .render();
+///
+/// assert_eq!(output, "# My Document\n\nThis is an introduction.\n");
+/// ```
 pub struct Document {
     blocks: Vec<Block>,
 }
@@ -41,10 +79,29 @@ impl Default for Document {
 }
 
 impl Document {
+    /// Creates a new empty document with no blocks.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::Document;
+    ///
+    /// let doc = Document::new();
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Appends a heading block to the document.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::{Document, HeadingLevel};
+    ///
+    /// let doc = Document::new()
+    ///     .heading(HeadingLevel::H1, "Introduction");
+    /// ```
     pub fn heading(mut self, level: HeadingLevel, text: impl Into<String>) -> Self {
         self.blocks.push(Block::Heading {
             level,
@@ -53,6 +110,19 @@ impl Document {
         self
     }
 
+    /// Appends a bullet list block to the document.
+    ///
+    /// Accepts any iterable of items that can be converted into a [`String`],
+    /// including `Vec<&str>`, `Vec<String>`, and arrays.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::Document;
+    ///
+    /// let doc = Document::new()
+    ///     .bullet_list(vec!["First item", "Second item", "Third item"]);
+    /// ```
     pub fn bullet_list<I, S>(mut self, items: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -65,11 +135,37 @@ impl Document {
         self
     }
 
+    /// Appends a paragraph block to the document.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::Document;
+    ///
+    /// let doc = Document::new()
+    ///     .paragraph("This is a paragraph.");
+    /// ```
     pub fn paragraph(mut self, text: impl Into<String>) -> Self {
         self.blocks.push(Block::Paragraph { text: text.into() });
         self
     }
 
+    /// Renders the document to a Markdown string.
+    ///
+    /// Blocks are separated by a blank line. The output always ends with a newline.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::{Document, HeadingLevel};
+    ///
+    /// let output = Document::new()
+    ///     .heading(HeadingLevel::H1, "Hello")
+    ///     .paragraph("World")
+    ///     .render();
+    ///
+    /// assert_eq!(output, "# Hello\n\nWorld\n");
+    /// ```
     pub fn render(&self) -> String {
         let mut parts: Vec<String> = Vec::new();
 
@@ -155,15 +251,42 @@ mod tests {
     }
 
     #[test]
+    fn h2_has_correct_marker() {
+        assert_eq!(HeadingLevel::H2.marker(), "##");
+    }
+
+    #[test]
+    fn render_empty_document() {
+        let doc: Document = Document::new();
+
+        let output: String = doc.render();
+
+        let expected: &str = "\n";
+
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn render_heading_only_document() {
+        let doc: Document = Document::new().heading(HeadingLevel::H2, "H2 Heading");
+
+        let output: String = doc.render();
+
+        let expected: &str = "## H2 Heading\n";
+
+        assert_eq!(output, expected);
+    }
+
+    #[test]
     fn render_basic_document() {
-        let doc = Document::new()
+        let doc: Document = Document::new()
             .heading(HeadingLevel::H1, "Title")
             .paragraph("Hello world")
             .bullet_list(vec!["A", "B"]);
 
-        let output = doc.render();
+        let output: String = doc.render();
 
-        let expected = "# Title\n\nHello world\n\n- A\n- B\n";
+        let expected: &str = "# Title\n\nHello world\n\n- A\n- B\n";
 
         assert_eq!(output, expected);
     }
