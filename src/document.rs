@@ -45,10 +45,10 @@ impl Document {
         Self::default()
     }
 
-    pub fn heading(mut self, level: HeadingLevel, text: &str) -> Self {
+    pub fn heading(mut self, level: HeadingLevel, text: impl Into<String>) -> Self {
         self.blocks.push(Block::Heading {
             level,
-            text: text.to_string(),
+            text: text.into(),
         });
         self
     }
@@ -65,10 +65,8 @@ impl Document {
         self
     }
 
-    pub fn paragraph(mut self, text: &str) -> Self {
-        self.blocks.push(Block::Paragraph {
-            text: text.to_string(),
-        });
+    pub fn paragraph(mut self, text: impl Into<String>) -> Self {
+        self.blocks.push(Block::Paragraph { text: text.into() });
         self
     }
 
