@@ -52,6 +52,13 @@ impl Document {
         });
         self
     }
+
+    pub fn bullet_list(mut self, items: Vec<&str>) -> Self {
+        self.blocks.push(Block::BulletList {
+            items: items.into_iter().map(|s: &str| s.to_string()).collect(),
+        });
+        self
+    }
 }
 
 #[cfg(test)]
@@ -78,6 +85,21 @@ mod tests {
             }
 
             other => panic!("expected heading block, got {:#?}", other),
+        }
+    }
+
+    #[test]
+    fn bullet_list_adds_bullet_list_block() {
+        let doc: Document = Document::new().bullet_list(vec!["A", "B"]);
+
+        let block: &Block = &doc.blocks[0];
+
+        match block {
+            Block::BulletList { items } => {
+                assert_eq!(*items, vec!["A", "B"]);
+            }
+
+            other => panic!("expected bullet list block, got {:#?}", other),
         }
     }
 }
