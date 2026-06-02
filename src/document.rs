@@ -1,3 +1,5 @@
+use std::vec;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeadingLevel {
     H1,
@@ -66,6 +68,32 @@ impl Document {
         });
         self
     }
+
+    pub fn render(&self) -> String {
+        let mut parts: Vec<String> = Vec::new();
+
+        for block in &self.blocks {
+            let rendered: String = match block {
+                Block::Heading { level, text } => {
+                    format!("{} {}", level.marker(), text)
+                }
+
+                Block::Paragraph { text } => text.clone(),
+
+                Block::BulletList { items } => items
+                    .iter()
+                    .map(|item| format!("- {}", item))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+            };
+
+            parts.push(rendered);
+        }
+
+        let mut result: String = parts.join("\n\n");
+        result.push('\n');
+        result
+    }
 }
 
 #[cfg(test)]
@@ -123,5 +151,19 @@ mod tests {
 
             other => panic!("expected paragraph block, got {:#?}", other),
         }
+    }
+
+    #[test]
+    fn render_basic_document() {
+        let doc = Document::new()
+            .heading(HeadingLevel::H1, "Title")
+            .paragraph("Hello world")
+            .bullet_list(vec!["A", "B"]);
+
+        let output = doc.render();
+
+        let expected = "# Title\n\nHello world\n\n- A\n- B\n";
+
+        assert_eq!(output, expected);
     }
 }
