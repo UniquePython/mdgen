@@ -1,5 +1,3 @@
-use std::vec;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HeadingLevel {
     H1,
