@@ -59,6 +59,13 @@ impl Document {
         });
         self
     }
+
+    pub fn paragraph(mut self, text: &str) -> Self {
+        self.blocks.push(Block::Paragraph {
+            text: text.to_string(),
+        });
+        self
+    }
 }
 
 #[cfg(test)]
@@ -100,6 +107,21 @@ mod tests {
             }
 
             other => panic!("expected bullet list block, got {:#?}", other),
+        }
+    }
+
+    #[test]
+    fn paragraph_adds_paragraph_block() {
+        let doc: Document = Document::new().paragraph("text");
+
+        let block: &Block = &doc.blocks[0];
+
+        match block {
+            Block::Paragraph { text } => {
+                assert_eq!(*text, "text");
+            }
+
+            other => panic!("expected paragraph block, got {:#?}", other),
         }
     }
 }
