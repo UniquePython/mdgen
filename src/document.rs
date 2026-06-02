@@ -49,6 +49,8 @@ enum Block {
     Paragraph { text: String },
 
     BulletList { items: Vec<String> },
+
+    NumberedList { items: Vec<String> },
 }
 
 /// A Markdown document that can be built incrementally and rendered to a string.
@@ -135,6 +137,31 @@ impl Document {
         self
     }
 
+    /// Appends a numbered list block to the document.
+    ///
+    /// Accepts any iterable of items that can be converted into a [`String`],
+    /// including `Vec<&str>`, `Vec<String>`, and arrays.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use mdgen::Document;
+    ///
+    /// let doc = Document::new()
+    ///     .numbered_list(vec!["First item", "Second item", "Third item"]);
+    /// ```
+    pub fn numbered_list<I, S>(mut self, items: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.blocks.push(Block::NumberedList {
+            items: items.into_iter().map(|s| s.into()).collect(),
+        });
+
+        self
+    }
+
     /// Appends a paragraph block to the document.
     ///
     /// # Examples
@@ -180,6 +207,13 @@ impl Document {
                 Block::BulletList { items } => items
                     .iter()
                     .map(|item| format!("- {}", item))
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+
+                Block::NumberedList { items } => items
+                    .iter()
+                    .enumerate()
+                    .map(|(i, item)| format!("{}. {}", i + 1, item))
                     .collect::<Vec<_>>()
                     .join("\n"),
             };
@@ -236,6 +270,21 @@ mod tests {
     }
 
     #[test]
+    fn numbered_list_adds_numbered_list_block() {
+        let doc: Document = Document::new().numbered_list(vec!["A", "B"]);
+
+        let block: &Block = &doc.blocks[0];
+
+        match block {
+            Block::NumberedList { items } => {
+                assert_eq!(*items, vec!["A", "B"]);
+            }
+
+            other => panic!("expected numbered list block, got {:#?}", other),
+        }
+    }
+
+    #[test]
     fn paragraph_adds_paragraph_block() {
         let doc: Document = Document::new().paragraph("text");
 
@@ -282,11 +331,12 @@ mod tests {
         let doc: Document = Document::new()
             .heading(HeadingLevel::H1, "Title")
             .paragraph("Hello world")
-            .bullet_list(vec!["A", "B"]);
+            .bullet_list(vec!["A", "B"])
+            .numbered_list(vec!["C", "D"]);
 
         let output: String = doc.render();
 
-        let expected: &str = "# Title\n\nHello world\n\n- A\n- B\n";
+        let expected: &str = "# Title\n\nHello world\n\n- A\n- B\n\n1. C\n2. D\n";
 
         assert_eq!(output, expected);
     }
