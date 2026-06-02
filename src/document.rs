@@ -21,6 +21,7 @@ impl HeadingLevel {
     }
 }
 
+#[derive(Debug)]
 enum Block {
     Heading { level: HeadingLevel, text: String },
 
@@ -50,5 +51,33 @@ impl Document {
             text: text.to_string(),
         });
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_document_is_empty() {
+        let doc: Document = Document::new();
+
+        assert_eq!(doc.blocks.len(), 0);
+    }
+
+    #[test]
+    fn heading_adds_heading_block() {
+        let doc: Document = Document::new().heading(HeadingLevel::H1, "Title");
+
+        let block: &Block = &doc.blocks[0];
+
+        match block {
+            Block::Heading { level, text } => {
+                assert_eq!(*level, HeadingLevel::H1);
+                assert_eq!(text, "Title");
+            }
+
+            other => panic!("expected heading block, got {:#?}", other),
+        }
     }
 }
