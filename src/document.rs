@@ -55,10 +55,15 @@ impl Document {
         self
     }
 
-    pub fn bullet_list(mut self, items: Vec<&str>) -> Self {
+    pub fn bullet_list<I, S>(mut self, items: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
         self.blocks.push(Block::BulletList {
-            items: items.into_iter().map(|s: &str| s.to_string()).collect(),
+            items: items.into_iter().map(|s| s.into()).collect(),
         });
+
         self
     }
 
