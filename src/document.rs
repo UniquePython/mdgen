@@ -221,6 +221,10 @@ impl Document {
             parts.push(rendered);
         }
 
+        if parts.is_empty() {
+            return String::new();
+        }
+
         let mut result: String = parts.join("\n\n");
         result.push('\n');
         result
@@ -310,7 +314,7 @@ mod tests {
 
         let output: String = doc.render();
 
-        let expected: &str = "\n";
+        let expected: &str = "";
 
         assert_eq!(output, expected);
     }
