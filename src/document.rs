@@ -1,6 +1,9 @@
 use crate::block::Block;
 use crate::heading::HeadingLevel;
 
+use std::fmt;
+use std::io::{self};
+
 /// A Markdown document that can be built incrementally and rendered to a string.
 ///
 /// `Document` uses a builder pattern — each method takes ownership of the document,
@@ -125,6 +128,59 @@ impl Document {
         self
     }
 
+    /// Renders the document to any [`std::io::Write`] target.
+    ///
+    /// This allows streaming output directly to files, stdout,
+    /// network streams, or in-memory buffers.
+    pub fn render_to<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
+        let mut first_block: bool = true;
+
+        for block in &self.blocks {
+            if !first_block {
+                writeln!(writer)?;
+                writeln!(writer)?;
+            }
+
+            first_block = false;
+
+            match block {
+                Block::Heading { level, text } => {
+                    write!(writer, "{} {}", level.marker(), text)?;
+                }
+
+                Block::Paragraph { text } => {
+                    write!(writer, "{}", text)?;
+                }
+
+                Block::BulletList { items } => {
+                    for (i, item) in items.iter().enumerate() {
+                        if i > 0 {
+                            writeln!(writer)?;
+                        }
+
+                        write!(writer, "- {}", item)?;
+                    }
+                }
+
+                Block::NumberedList { items } => {
+                    for (i, item) in items.iter().enumerate() {
+                        if i > 0 {
+                            writeln!(writer)?;
+                        }
+
+                        write!(writer, "{}. {}", i + 1, item)?;
+                    }
+                }
+            }
+        }
+
+        if !self.blocks.is_empty() {
+            writeln!(writer)?;
+        }
+
+        Ok(())
+    }
+
     /// Renders the document to a Markdown string.
     ///
     /// Blocks are separated by a blank line. The output always ends with a newline.
@@ -142,40 +198,63 @@ impl Document {
     /// assert_eq!(output, "# Hello\n\nWorld\n");
     /// ```
     pub fn render(&self) -> String {
-        let mut parts: Vec<String> = Vec::new();
+        let mut buf: Vec<u8> = Vec::new();
+
+        self.render_to(&mut buf)
+            .expect("writing to Vec<u8> should never fail");
+
+        String::from_utf8(buf).expect("generated markdown should always be valid UTF-8")
+    }
+}
+
+impl fmt::Display for Document {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut first_block: bool = true;
 
         for block in &self.blocks {
-            let rendered: String = match block {
+            if !first_block {
+                writeln!(f)?;
+                writeln!(f)?;
+            }
+
+            first_block = false;
+
+            match block {
                 Block::Heading { level, text } => {
-                    format!("{} {}", level.marker(), text)
+                    write!(f, "{} {}", level.marker(), text)?;
                 }
 
-                Block::Paragraph { text } => text.clone(),
+                Block::Paragraph { text } => {
+                    write!(f, "{}", text)?;
+                }
 
-                Block::BulletList { items } => items
-                    .iter()
-                    .map(|item| format!("- {}", item))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
+                Block::BulletList { items } => {
+                    for (i, item) in items.iter().enumerate() {
+                        if i > 0 {
+                            writeln!(f)?;
+                        }
 
-                Block::NumberedList { items } => items
-                    .iter()
-                    .enumerate()
-                    .map(|(i, item)| format!("{}. {}", i + 1, item))
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-            };
+                        write!(f, "- {}", item)?;
+                    }
+                }
 
-            parts.push(rendered);
+                Block::NumberedList { items } => {
+                    for (i, item) in items.iter().enumerate() {
+                        if i > 0 {
+                            writeln!(f)?;
+                        }
+
+                        write!(f, "{}. {}", i + 1, item)?;
+                    }
+                }
+            }
         }
 
-        if parts.is_empty() {
-            return String::new();
+        if !self.blocks.is_empty() {
+            writeln!(f)?;
         }
 
-        let mut result: String = parts.join("\n\n");
-        result.push('\n');
-        result
+        Ok(())
     }
 }
 
@@ -291,5 +370,29 @@ mod tests {
         let expected: &str = "# Title\n\nHello world\n\n- A\n- B\n\n1. C\n2. D\n";
 
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn render_to_writer_basic_document() {
+        let doc = Document::new()
+            .heading(HeadingLevel::H1, "Title")
+            .paragraph("Hello world");
+
+        let mut buf = Vec::new();
+
+        doc.render_to(&mut buf).unwrap();
+
+        let output = String::from_utf8(buf).unwrap();
+
+        assert_eq!(output, "# Title\n\nHello world\n");
+    }
+
+    #[test]
+    fn display_matches_render() {
+        let doc = Document::new()
+            .heading(HeadingLevel::H1, "Title")
+            .paragraph("Hello world");
+
+        assert_eq!(doc.to_string(), doc.render());
     }
 }
